@@ -2,7 +2,7 @@
 
 A fast, interactive viewer for SICD and SIDD NITF SAR imagery built with Qt5.
 
-![SIV screenshot placeholder](docs/screenshot.png)
+![SIV screenshot](Screenshot%202026-03-16%20130350.png)
 
 ## Features
 
