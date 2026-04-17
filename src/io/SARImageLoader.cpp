@@ -144,7 +144,7 @@ static OverviewResult loadOverview(six::NITFReadControl& reader, six::PixelType 
         int64_t totalValid = 0;
         for (float db : dbBuf) {
             if (db > kDbFloor) {
-                hist[static_cast<int>((db - dbMin) * binScale)]++;
+                hist[std::min(kHistBins - 1, static_cast<int>((db - dbMin) * binScale))]++;
                 ++totalValid;
             }
         }

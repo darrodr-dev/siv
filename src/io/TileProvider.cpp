@@ -261,7 +261,10 @@ void TileProvider::stopLoaders() {
         m_queue.cond.wakeAll();
     }
     for (auto* loader : m_loaders) {
-        loader->wait(5000);
+        if (!loader->wait(5000)) {
+            loader->terminate();
+            loader->wait();
+        }
         delete loader;
     }
     m_loaders.clear();
@@ -311,6 +314,11 @@ void TileProvider::setStretch(StretchParams newStretch) {
 }
 
 QImage TileProvider::tile(int tileRow, int tileCol) {
+    // Never enqueue a tile that would have zero extent (image edge past last pixel).
+    const int rowStart = tileRow * m_tileSize;
+    const int colStart = tileCol * m_tileSize;
+    if (rowStart >= m_rows || colStart >= m_cols) return QImage{};
+
     const auto key = qMakePair(tileRow, tileCol);
 
     if (m_cache.contains(key)) {

@@ -145,7 +145,7 @@ void ImageViewer::setTileProvider(TileProvider* provider) {
   // When stretch changes, redraw the whole scene (overview + visible tiles all updated).
   connect(provider, &TileProvider::imageChanged, this, [this]() {
     if (m_imageItem) m_imageItem->update();
-  });
+  }, Qt::UniqueConnection);
 
   m_userZoomed = false;
   m_targetZoom = 1.0;

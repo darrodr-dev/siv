@@ -51,6 +51,16 @@ void MainWindow::buildUi() {
   buildToolBar();
   buildDock();
   buildStatusBar();
+
+  // Connect once here so loading multiple files never accumulates connections.
+  connect(m_histogram, &HistogramWidget::stretchChanged, this, [this](float lo, float hi) {
+    if (!m_tileProvider) return;
+    m_pendingStretch = m_tileProvider->stretch();
+    m_pendingStretch.lo = lo;
+    m_pendingStretch.hi = hi;
+    m_tileProvider->updateOverview(m_pendingStretch);
+    m_stretchDebounce->start();
+  });
 }
 
 void MainWindow::buildMenuBar() {
@@ -199,17 +209,6 @@ void MainWindow::openFile(const QString& path) {
       m_viewer->setTileProvider(m_tileProvider);
 
       m_histogram->setHistogram(result.histogram, result.stretch);
-
-      connect(m_histogram, &HistogramWidget::stretchChanged, this, [this](float lo, float hi) {
-        if (!m_tileProvider) return;
-        m_pendingStretch = m_tileProvider->stretch();
-        m_pendingStretch.lo = lo;
-        m_pendingStretch.hi = hi;
-        // Re-render the overview immediately for live preview.
-        m_tileProvider->updateOverview(m_pendingStretch);
-        // Defer the (expensive) tile cache flush + reload until the slider settles.
-        m_stretchDebounce->start();
-      });
 
       connect(m_tileProvider, &TileProvider::loadingProgress, this, [this](int n) {
         if (n == 0)
