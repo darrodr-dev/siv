@@ -1,6 +1,9 @@
 # cmake/bundle_libs.cmake
 # Runs at install time (via install(SCRIPT ...)) to copy all required shared
-# libraries into <prefix>/lib and write a launcher script.
+# libraries and Qt plugins into <prefix>/lib and <prefix>/plugins, and write
+# a qt.conf that redirects Qt plugin discovery to the bundled directory.
+# The binary's embedded RUNPATH ($ORIGIN/../lib) handles shared-library lookup;
+# no wrapper script or LD_LIBRARY_PATH manipulation is needed.
 #
 # Variables expected to be set by the caller:
 #   _siv_prefix  — CMAKE_INSTALL_PREFIX
@@ -8,7 +11,7 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-set(_bin     "${_siv_prefix}/bin/SIV")
+set(_bin     "${_siv_prefix}/bin/siv")
 set(_lib_dst "${_siv_prefix}/lib")
 set(_plug_dst "${_siv_prefix}/plugins")
 
@@ -62,24 +65,12 @@ foreach(_cat platforms xcbglintegrations imageformats iconengines)
     endif()
 endforeach()
 
-# ── 3. Launcher script ────────────────────────────────────────────────────────
-# Sets LD_LIBRARY_PATH and QT_PLUGIN_PATH relative to the script location so
-# the package works from any install prefix.
-set(_launcher "${_siv_prefix}/bin/siv")
-file(WRITE "${_launcher}"
-[=[#!/bin/sh
-DIR=$(dirname $(readlink -f "$0"))
-if [ -n "$LD_LIBRARY_PATH" ]; then
-    export LD_LIBRARY_PATH="$DIR/../lib:$LD_LIBRARY_PATH"
-else
-    export LD_LIBRARY_PATH="$DIR/../lib"
-fi
-export QT_PLUGIN_PATH="$DIR/../plugins"
-exec "$DIR/SIV" "$@"
-]=])
-file(CHMOD "${_launcher}"
-    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
-                GROUP_READ GROUP_EXECUTE
-                WORLD_READ WORLD_EXECUTE)
+# ── 3. qt.conf ────────────────────────────────────────────────────────────────
+# Qt reads qt.conf from the directory containing the executable and uses the
+# [Paths] section to locate plugins relative to the executable prefix.
+# This replaces the need for QT_PLUGIN_PATH; the binary's embedded RUNPATH
+# ($ORIGIN/../lib) already handles shared-library lookup without LD_LIBRARY_PATH.
+file(WRITE "${_siv_prefix}/bin/qt.conf"
+"[Paths]\nPlugins = ../plugins\n")
 
 message(STATUS "bundle_libs: bundled ${_resolved}")
