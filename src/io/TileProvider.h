@@ -109,7 +109,8 @@ private:
     // Current visible tile range (updated each paint frame).
     int m_visRMin = 0, m_visRMax = -1, m_visCMin = 0, m_visCMax = -1;
 
-    int m_generation = 0;  // incremented on setStretch; stale tiles are discarded
+    int m_generation  = 0;  // incremented on setStretch AND flushQueue; discards in-flight tiles
+    int m_stretchGen  = 0;  // incremented only on setStretch; governs cache content validity
 
     TileQueue          m_queue;
     QList<TileLoader*> m_loaders;

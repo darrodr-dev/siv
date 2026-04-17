@@ -310,6 +310,7 @@ void TileProvider::setStretch(StretchParams newStretch) {
         m_queue.stretch = newStretch;
         m_queue.generation = ++m_generation;
     }
+    ++m_stretchGen;
 
     emit loadingProgress(0);
 }
@@ -327,7 +328,7 @@ QImage TileProvider::tile(int tileRow, int tileCol) {
         m_cacheOrder.prepend(key);
         // If this tile was rendered with an older stretch, queue a fresh load
         // but return the stale image as a placeholder in the meantime.
-        if (m_cacheTileGen.value(key) != m_generation && !m_pending.contains(key)) {
+        if (m_cacheTileGen.value(key) != m_stretchGen && !m_pending.contains(key)) {
             m_pending.insert(key);
             {
                 QMutexLocker lock(&m_queue.mutex);
@@ -372,6 +373,9 @@ void TileProvider::flushQueue() {
         QMutexLocker lock(&m_queue.mutex);
         m_queue.items.clear();
         m_queue.queued.clear();
+        // Bump generation so any TileLoader threads already mid-read on a tile
+        // that was in the queue discard their result when they call onTileLoaded.
+        m_queue.generation = ++m_generation;
     }
     m_pending.clear();
     emit loadingProgress(0);
@@ -408,7 +412,7 @@ void TileProvider::onTileLoaded(int tileRow, int tileCol, int gen, const QImage&
     }
 
     m_cache.insert(key, img);
-    m_cacheTileGen.insert(key, gen);
+    m_cacheTileGen.insert(key, m_stretchGen);
     m_cacheOrder.removeOne(key);  // remove stale entry before re-inserting at MRU front
     m_cacheOrder.prepend(key);
 
