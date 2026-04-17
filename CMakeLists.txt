@@ -188,6 +188,8 @@ target_include_directories(SIV PRIVATE
     ${SIX_INCLUDE_DIR}
 )
 
+target_compile_options(SIV PRIVATE -Wall -Wextra -Wpedantic)
+
 target_link_libraries(SIV PRIVATE
     Qt5::Widgets
     Qt5::Concurrent
