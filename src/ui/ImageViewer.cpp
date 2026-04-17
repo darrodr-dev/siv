@@ -70,15 +70,39 @@ public:
         const int tcMin = std::max(0, static_cast<int>(exposed.left()   / T));
         const int tcMax = std::min(m_provider->tileCols() - 1, static_cast<int>(exposed.right()  / T));
 
-        if ((trMax - trMin + 1) * (tcMax - tcMin + 1) > TileProvider::kMaxCachedTiles) return;
+        // When more tiles are visible than the cache can hold, shrink the *request*
+        // window from the centre of the viewport to fit within cache capacity.
+        // Tiles outside the window are still drawn from cache if already present,
+        // but no new requests are issued for them — preventing the reload loop where
+        // every new tile evicts a still-visible one.
+        int trReqMin = trMin, trReqMax = trMax, tcReqMin = tcMin, tcReqMax = tcMax;
+        {
+            const int rCount = trMax - trMin + 1;
+            const int cCount = tcMax - tcMin + 1;
+            if (rCount * cCount > TileProvider::kMaxCachedTiles) {
+                const float scale = std::sqrt(static_cast<float>(TileProvider::kMaxCachedTiles)
+                                              / static_cast<float>(rCount * cCount));
+                const int trCtr  = (trMin + trMax) / 2;
+                const int tcCtr  = (tcMin + tcMax) / 2;
+                const int halfR  = std::max(1, static_cast<int>(rCount * scale * 0.5f));
+                const int halfC  = std::max(1, static_cast<int>(cCount * scale * 0.5f));
+                trReqMin = std::max(0,                          trCtr - halfR);
+                trReqMax = std::min(m_provider->tileRows() - 1, trCtr + halfR);
+                tcReqMin = std::max(0,                          tcCtr - halfC);
+                tcReqMax = std::min(m_provider->tileCols() - 1, tcCtr + halfC);
+            }
+        }
 
-        m_provider->setViewport(trMin, trMax, tcMin, tcMax);
+        m_provider->setViewport(trReqMin, trReqMax, tcReqMin, tcReqMax);
 
         painter->setRenderHint(QPainter::SmoothPixmapTransform, false);
         for (int tr = trMin; tr <= trMax; ++tr) {
             for (int tc = tcMin; tc <= tcMax; ++tc) {
-                const QImage tile = m_frozen ? m_provider->peekTile(tr, tc)
-                                             : m_provider->tile(tr, tc);
+                const bool inReqWindow = (tr >= trReqMin && tr <= trReqMax &&
+                                          tc >= tcReqMin && tc <= tcReqMax);
+                const QImage tile = (m_frozen || !inReqWindow)
+                                    ? m_provider->peekTile(tr, tc)
+                                    : m_provider->tile(tr, tc);
                 if (tile.isNull()) continue;
                 const QRectF tileScene(tc * T, tr * T, tile.width(), tile.height());
                 const QRectF dst = tileScene.intersected(exposed);
