@@ -200,6 +200,7 @@ target_compile_definitions(SIV PRIVATE SARVIEWER_HAS_SIX)
 
 # Embed RPATH so the binary finds bundled libs in ../lib relative to itself.
 set_target_properties(SIV PROPERTIES
+    OUTPUT_NAME             "siv"
     INSTALL_RPATH           "$ORIGIN/../lib"
     BUILD_WITH_INSTALL_RPATH FALSE
     INSTALL_RPATH_USE_LINK_PATH FALSE
