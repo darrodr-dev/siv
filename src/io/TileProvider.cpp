@@ -311,7 +311,6 @@ void TileProvider::setStretch(StretchParams newStretch) {
         m_queue.generation = ++m_generation;
     }
 
-    emit imageChanged();
     emit loadingProgress(0);
 }
 
@@ -410,6 +409,7 @@ void TileProvider::onTileLoaded(int tileRow, int tileCol, int gen, const QImage&
 
     m_cache.insert(key, img);
     m_cacheTileGen.insert(key, gen);
+    m_cacheOrder.removeOne(key);  // remove stale entry before re-inserting at MRU front
     m_cacheOrder.prepend(key);
 
     if (m_callback)
