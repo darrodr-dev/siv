@@ -73,6 +73,7 @@ protected:
                     m_queue->cond.wait(&m_queue->mutex);
                 if (m_queue->stop.load(std::memory_order_acquire)) break;
                 key     = m_queue->items.takeFirst();
+                m_queue->queued.remove(key);
                 stretch = m_queue->stretch;
                 m_gen   = m_queue->generation;
             }
@@ -305,6 +306,7 @@ void TileProvider::setStretch(StretchParams newStretch) {
     {
         QMutexLocker lock(&m_queue.mutex);
         m_queue.items.clear();
+        m_queue.queued.clear();
         m_queue.stretch = newStretch;
         m_queue.generation = ++m_generation;
     }
@@ -330,9 +332,11 @@ QImage TileProvider::tile(int tileRow, int tileCol) {
             m_pending.insert(key);
             {
                 QMutexLocker lock(&m_queue.mutex);
-                m_queue.items.removeOne(key);
-                m_queue.items.prepend(key);
-                m_queue.cond.wakeOne();
+                if (!m_queue.queued.contains(key)) {
+                    m_queue.queued.insert(key);
+                    m_queue.items.prepend(key);
+                    m_queue.cond.wakeOne();
+                }
             }
             emit loadingProgress(static_cast<int>(m_pending.size()));
         }
@@ -343,9 +347,11 @@ QImage TileProvider::tile(int tileRow, int tileCol) {
         m_pending.insert(key);
         {
             QMutexLocker lock(&m_queue.mutex);
-            m_queue.items.removeOne(key);
-            m_queue.items.prepend(key);
-            m_queue.cond.wakeOne();
+            if (!m_queue.queued.contains(key)) {
+                m_queue.queued.insert(key);
+                m_queue.items.prepend(key);
+                m_queue.cond.wakeOne();
+            }
         }
         emit loadingProgress(static_cast<int>(m_pending.size()));
     }
@@ -366,6 +372,7 @@ void TileProvider::flushQueue() {
     {
         QMutexLocker lock(&m_queue.mutex);
         m_queue.items.clear();
+        m_queue.queued.clear();
     }
     m_pending.clear();
     emit loadingProgress(0);

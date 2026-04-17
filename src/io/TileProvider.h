@@ -27,12 +27,13 @@ struct HistogramData {
 
 // Shared queue consumed by all TileLoader threads.
 struct TileQueue {
-    QMutex                mutex;
-    QWaitCondition        cond;
-    QList<QPair<int,int>> items;   // LIFO: prepend on push, takeFirst on pop
-    StretchParams         stretch;
-    int                   generation = 0;  // bumped on every setStretch
-    std::atomic<bool>     stop{false};
+    QMutex                    mutex;
+    QWaitCondition            cond;
+    QList<QPair<int,int>>     items;    // LIFO: prepend on push, takeFirst on pop
+    QSet<QPair<int,int>>      queued;   // O(1) membership mirror of items
+    StretchParams             stretch;
+    int                       generation = 0;  // bumped on every setStretch
+    std::atomic<bool>         stop{false};
 };
 
 class TileLoader;
