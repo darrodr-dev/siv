@@ -70,6 +70,8 @@ public:
         const int tcMin = std::max(0, static_cast<int>(exposed.left()   / T));
         const int tcMax = std::min(m_provider->tileCols() - 1, static_cast<int>(exposed.right()  / T));
 
+        if ((trMax - trMin + 1) * (tcMax - tcMin + 1) > TileProvider::kMaxCachedTiles) return;
+
         m_provider->setViewport(trMin, trMax, tcMin, tcMax);
 
         painter->setRenderHint(QPainter::SmoothPixmapTransform, false);
